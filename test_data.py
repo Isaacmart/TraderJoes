@@ -3,44 +3,26 @@ import json
 import requests
 import csv
 import time
+import pandas as pd
 
-product_id = "BTC-USD"
 
-session = requests.session()
-auth = None
-api_url = 'https://api.pro.coinbase.com'
-method = "get"
-end_point = '/products/{}/candles'.format(product_id)
-url = api_url + end_point
-file_name = "predict_data.csv"
+def merge_timeframes(product_id="BTC-USD"):
 
-columns = ["time", "low", "high", "open", "close", "volume"]
-awriter = open(file_name, "w")
-writer = csv.writer(awriter, delimiter=',', quotechar='"')
-writer.writerow(columns)
-awriter.close()
+    cols = ['time', 'open', 'high', 'low', 'close', 'volume']
 
-epoch_time = int(1712193180)
+    data_1 = pd.read_csv(f"refined_1m/{product_id}-refined-data.csv", index_col='Unnamed: 0').add_suffix("_1m")
 
-current_start = str(epoch_time)
-current_end = str(epoch_time + (300 * 60))
-print(current_end)
+    data_5 = pd.read_csv(f"refined_5m/{product_id}-refined-data.csv", index_col='Unnamed: 0').add_suffix("_5m")
 
-params = {
-    "start": str(current_start),
-    "end": str(current_end),
-    "granularity": "60"
-}
+    data_60 = pd.read_csv(f"refined_60m/{product_id}-refined-data.csv", index_col='Unnamed: 0').add_suffix("_60m")
 
-res = session.request(method, url, params=params, auth=auth, timeout=30)
-print(res.json())
-if res.status_code == 200:
-    res = res.json()
+    combined = pd.merge(data_1, data_5, left_on="time_1m", right_on="time_5m", how="left")
 
-    awriter = open(file_name, "a")
-    writer = csv.writer(awriter, delimiter=',', quotechar='"')
+    #combined = pd.merge(combined, data_60, left_on="time_1m", right_on="time_60m", how="left")
 
-    for line in res:
-        writer.writerow(line)
+    combined.to_csv("test_combine.csv")
 
-    awriter.close()
+
+if __name__ == '__main__':
+    merge_timeframes()
+

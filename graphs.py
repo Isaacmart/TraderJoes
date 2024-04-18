@@ -10,7 +10,7 @@ def main():
         if prod["status"] == "online" and prod["trading_disabled"] is False:
 
             start = prod['id'].find("-")
-            first_token =  prod["id"][:start]
+            first_token = prod["id"][:start]
             second_token = prod["id"][start+1:]
             if first_token in ids:
                 ids[first_token].add(second_token)

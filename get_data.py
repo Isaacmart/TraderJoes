@@ -4,68 +4,83 @@ import requests
 import csv
 import time
 
-product_id = "ETH-USD"
 
-session = requests.session()
-auth = None
-api_url = 'https://api.pro.coinbase.com'
-method = "get"
-end_point = '/products/{}/candles'.format(product_id)
-url = api_url + end_point
-file_name = f"data/{product_id}-test_data.csv"
+def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
+    product_id = product_id
+    granularity = granularity
+    session = requests.session()
+    end_time = end_time
 
-columns = ["time", "low", "high", "open", "close", "volume"]
-awriter = open(file_name, "w")
-writer = csv.writer(awriter, delimiter=',', quotechar='"')
-writer.writerow(columns)
-awriter.close()
+    auth = None
+    api_url = 'https://api.pro.coinbase.com'
+    method = "get"
+    end_point = '/products/{}/candles'.format(product_id)
+    url = api_url + end_point
+    file_name = f"data_{str(granularity)}m/{product_id}-test_data.csv"
 
-epoch_time = int(time.time())
+    columns = ["time", "low", "high", "open", "close", "volume"]
+    awriter = open(file_name, "w")
+    writer = csv.writer(awriter, delimiter=',', quotechar='"')
 
-get_data = True
-requests = 0
+    writer.writerow(columns)
+    awriter.close()
 
-data = []
+    get_data = True
+    reqs = 0
+    data = []
 
-while requests < 9 and get_data:
-
-    requests += 1
-
-    current_start = epoch_time - (300 * 60)
+    epoch_time = end_time if end_time else int(time.time())
     current_end = epoch_time
+    current_start = epoch_time - (300 * (60 * granularity))
 
-    params = {
-        "start": str(current_start),
-        "end": str(current_end),
-        "granularity": "60"
-    }
+    while reqs < 9 and get_data:
 
-    try:
-        res = session.request(method, url, params=params, auth=auth, timeout=30)
-    except Exception as e:
-        session = requests.session()
-        continue
+        reqs += 1
 
-    if res.status_code == 200:
-        res = res.json()
-        data.extend(res)
+        params = {
+            "start": str(current_start),
+            "end": str(current_end),
+            "granularity": str(60 * granularity)
+        }
 
-        current_end = res[-1][0]
-        current_start = current_end - (300 * 60)
+        try:
+            res = session.request(method, url, params=params, auth=auth, timeout=30)
+        except requests.exceptions.ReadTimeout as reRT:
+            print(res)
+            print(res.json())
+            print(session)
+            session = requests.session()
+            res = session.request(method, url, params=params, auth=auth, timeout=30)
 
-    else:
-        get_data = False
-        requests = 9
+        if res.status_code == 200:
+            #print(f"Got data from {current_start} to {current_end}")
+            res = res.json()
+            data.extend(res)
 
-    if requests >= 9:
-        awriter = open(file_name, "a")
-        writer = csv.writer(awriter, delimiter=',', quotechar='"')
+            try:
+                current_end = res[-1][0] - (60 * granularity)
+            except IndexError as ie:
+                print(params)
+                print(res)
+                return
+            current_start = current_end - (300 * (60 * granularity))
 
-        for line in data:
-            writer.writerow(line)
+        else:
+            get_data = False
+            reqs = 9
 
-        awriter.close()
+        if reqs >= 9:
+            awriter = open(file_name, "a")
+            writer = csv.writer(awriter, delimiter=',', quotechar='"')
 
-        requests = 0
-        data = []
+            for line in data:
+                writer.writerow(line)
 
+            awriter.close()
+
+            reqs = 0
+            data = []
+
+
+if __name__ == "__main__":
+    coinbase_candles(granularity=60)

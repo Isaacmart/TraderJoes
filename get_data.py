@@ -1,5 +1,4 @@
 import http.client
-import json
 import requests
 import csv
 import time
@@ -46,7 +45,6 @@ def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
         try:
             res = session.request(method, url, params=params, auth=auth, timeout=30)
         except requests.exceptions.ReadTimeout as reRT:
-            print(res)
             print(res.json())
             print(session)
             session = requests.session()
@@ -81,6 +79,24 @@ def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
             reqs = 0
             data = []
 
+    session.close()
+
+
+def coinbase_products():
+
+    auth = None
+    session = requests.session()
+    api_url = 'https://api.pro.coinbase.com'
+    method = 'get'
+    endpoint = '/products'
+    url = api_url + endpoint
+    params = ''
+
+    res = session.request(method, url, params=params, auth=auth, timeout=30)
+    return res.json()
+
 
 if __name__ == "__main__":
-    coinbase_candles(granularity=60)
+    #coinbase_candles(granularity=5)
+    products = coinbase_products()
+    print(products)

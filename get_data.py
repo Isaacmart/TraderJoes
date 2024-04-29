@@ -2,20 +2,31 @@ import http.client
 import requests
 import csv
 import time
+import logging
 
 
 def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
+    FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
+    logging.basicConfig(level=logging.INFO, format=FORMAT)
+
     product_id = product_id
     granularity = granularity
     session = requests.session()
     end_time = end_time
+
+    if granularity < 60:
+        folder = f"{str(granularity)}m"
+    elif granularity < 1440:
+        folder = f"{str(int(granularity / 60))}h"
+    else:
+        folder = f"{str(int((granularity / (60 * 24))))}d"
 
     auth = None
     api_url = 'https://api.pro.coinbase.com'
     method = "get"
     end_point = '/products/{}/candles'.format(product_id)
     url = api_url + end_point
-    file_name = f"data_{str(granularity)}m/{product_id}-test_data.csv"
+    file_name = f"data_{folder}/{product_id}-test_data.csv"
 
     columns = ["time", "low", "high", "open", "close", "volume"]
     awriter = open(file_name, "w")
@@ -44,9 +55,10 @@ def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
 
         try:
             res = session.request(method, url, params=params, auth=auth, timeout=30)
-        except requests.exceptions.ReadTimeout as reRT:
             print(res.json())
-            print(session)
+            break
+        except requests.exceptions.ReadTimeout as reRT:
+            logging.info(f"exception occurred {reRT.response}")
             session = requests.session()
             res = session.request(method, url, params=params, auth=auth, timeout=30)
 
@@ -58,9 +70,9 @@ def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
             try:
                 current_end = res[-1][0] - (60 * granularity)
             except IndexError as ie:
-                print(params)
-                print(res)
-                return
+                logging.info(f"error occurred {ie.args}")
+                get_data = False
+                reqs = 9
             current_start = current_end - (300 * (60 * granularity))
 
         else:
@@ -97,6 +109,5 @@ def coinbase_products():
 
 
 if __name__ == "__main__":
-    #coinbase_candles(granularity=5)
-    products = coinbase_products()
-    print(products)
+    coinbase_candles(granularity=5)
+    #products = coinbase_products()

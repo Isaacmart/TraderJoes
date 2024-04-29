@@ -2,6 +2,7 @@ import pandas as pd
 import talib as ta
 import numpy as np
 import math
+import logging
 
 
 def sigmoid_function(x):
@@ -71,19 +72,27 @@ def get_data(product: str) -> pd.DataFrame:
 
 def add_indicators(product_id="BTC-USD", granularity=5, on=None):
 
-    file_name = f"data_{str(granularity)}m/{product_id}-test_data.csv"
-    data_2 = get_data(file_name)
+    if granularity < 60:
+        folder = f"{str(granularity)}m"
+    elif granularity < 1440:
+        folder = f"{str(int(granularity / 60))}h"
+    else:
+        folder = f"{str(int((granularity / (60 * 24))))}d"
 
-    refined_path = f"refined_{str(granularity)}m/{product_id}-refined-data.csv"
+    file_name = f"data_{folder}/{product_id}-test_data.csv"
+    data_2 = get_data(file_name)
 
     data_2 = data_2.reindex(index=data_2.index[::-1])
     data_2 = data_2.reset_index(drop=True)
     data_2 = add_macd(data_2, on=on if on else 'close')
+    data_2 = add_rsi(data_2, on=on if on else 'close')
+
+    refined_path = f"refined_{folder}/{product_id}-refined-data.csv"
     data_2.to_csv(refined_path)
 #
 
 
 if __name__ == "__main__":
-    add_indicators(granularity=1)
-    add_indicators(granularity=5)
+    #add_indicators(granularity=1)
+    add_indicators(product_id="AAVE-USD", granularity=5)
     #add_indicators(granularity=60)

@@ -3,57 +3,55 @@ from normalize_data import add_indicators
 from strategy_tester import Tester
 import pandas as pd
 import threading
+import logging
 
 
 def parallel_testing(product_id, granularity):
     global traderDF
-    print(f"start adding indicators for  {product_id}")
+    global logger
+    logger.info(f"start adding indicators for  {product_id}")
     add_indicators(product_id=product_id, granularity=granularity)
 
-    refined_path = f"refined_{granularity}m/{product_id}-refined-data.csv"
-
-    print(f"start testing {product_id}")
-    test = Tester(refined_path)
+    logger.info(f"start testing {product_id}")
+    test = Tester(product_id=product_id, granularity=granularity)
     test.test_strategy()
-
     trades = pd.DataFrame(test.trades)
-    stats = trades.describe()
+    stats = trades['gain_percentage'].describe()
 
-    print(f"writing stats for {product_id}, \n{stats}")
+    logger.info(f"writing stats for {product_id}, \n{stats}")
+    traderDF = pd.concat([traderDF, stats])
 
-    try:
-        if traderDF is None:
-            traderDF = stats
-        else:
-            traderDF = pd.concat([traderDF, stats])
-    except Exception as e:
-        print(e)
-
-    print(f"writing trades for {product_id}")
-    trades.to_csv(f"trades/{product_id}-trades.csv")
+    logger.info(f"writing trades for {product_id}")
+    trades.to_csv(f"trades_1d/{product_id}-trades.csv")
 
 
 if __name__ == '__main__':
-    traderDF = None
-    products = coinbase_products()
-    trade_products = []
+    grans = [5, 60, 60*24]
 
-    for product in products:
-        if product['id'][-3:] == "USD" and product['trading_disabled'] is False:
-            trade_products.append(product['id'])
+    for gran in grans:
 
-    print(trade_products)
+        traderDF = pd.DataFrame()
+        products = coinbase_products()
+        trade_products = []
 
-    ths = []
+        logger = logging.getLogger(__name__)
 
-    for product in trade_products:
-        print(f"starting getting data for {product}")
-        coinbase_candles(product_id=product, granularity=5)
-        th = threading.Thread(target=parallel_testing, args=(product, 5, ))
-        th.start()
-        ths.append(th)
+        logging.basicConfig(level=logging.INFO)
 
-    for th in ths:
-        th.join()
+        for product in products:
+            if product['id'][-3:] == "USD" and product['trading_disabled'] is False:
+                trade_products.append(product['id'])
+        logger.info(f"products: {trade_products}")
 
-    traderDF.to_csv("analysis.csv")
+        ths = []
+        for product in trade_products:
+            logger.info(f"starting getting data for {product}")
+            coinbase_candles(product_id=product, granularity=gran)
+            th = threading.Thread(target=parallel_testing, args=(product, gran, ), name=f"{product}-thread")
+            th.start()
+            ths.append(th)
+
+        for th in ths:
+            th.join()
+
+        traderDF.to_csv(f"analysis-gran{gran if gran <=60 else gran / 60}.csv")

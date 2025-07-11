@@ -190,7 +190,7 @@ if __name__ == '__main__':
         cur_ex = test.expected_period_return(current_months)
 
         if cur_ex.count() > 0:
-            cur_expects.append({'product': exp_index['product'], 'return': cur_ex.iloc[-1]})
+            cur_expects.append({'product': exp_index['producAt'], 'return': cur_ex.iloc[-1]})
         else:
             cur_expects.append({'product': exp_index['product'], 'return': 100})
 

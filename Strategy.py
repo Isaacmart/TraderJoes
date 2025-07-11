@@ -22,11 +22,19 @@ def parallel_testing(product_id, granularity):
     traderDF = pd.concat([traderDF, stats])
 
     logger.info(f"writing trades for {product_id}")
-    trades.to_csv(f"trades_1d/{product_id}-trades.csv")
+
+    if granularity < 60:
+        folder = f"{str(granularity)}m"
+    elif granularity < 1440:
+        folder = f"{str(int(granularity / 60))}h"
+    else:
+        folder = f"{str(int((granularity / (60 * 24))))}d"
+    trades.to_csv(f"trades_{folder}/{product_id}-trades.csv")
 
 
 if __name__ == '__main__':
-    grans = [5, 60, 60*24]
+    grans = [1, 5, 15, 60, 60*24]
+    #grans = [15, 60, 60*24]
 
     for gran in grans:
 
@@ -45,7 +53,7 @@ if __name__ == '__main__':
 
         ths = []
         for product in trade_products:
-            logger.info(f"starting getting data for {product}")
+            logger.info(f"starting getting data for {product} for granularity {gran}")
             coinbase_candles(product_id=product, granularity=gran)
             th = threading.Thread(target=parallel_testing, args=(product, gran, ), name=f"{product}-thread")
             th.start()
@@ -54,4 +62,11 @@ if __name__ == '__main__':
         for th in ths:
             th.join()
 
-        traderDF.to_csv(f"analysis-gran{gran if gran <=60 else gran / 60}.csv")
+        if gran < 60:
+            folder = f"{str(gran)}m"
+        elif gran < 1440:
+            folder = f"{str(int(gran / 60))}h"
+        else:
+            folder = f"{str(int((gran / (60 * 24))))}d"
+
+        traderDF.to_csv(f"analysis-gran_{folder}.csv")

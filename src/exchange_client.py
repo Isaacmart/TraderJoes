@@ -1,11 +1,10 @@
-import http.client
 import requests
 import csv
 import time
 import logging
 
 
-def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
+def get_all_candles(product_id, granularity, end_time):
     FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
     logging.basicConfig(level=logging.INFO, format=FORMAT)
 
@@ -22,11 +21,11 @@ def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
         folder = f"{str(int((granularity / (60 * 24))))}d"
 
     auth = None
-    api_url = 'https://api.exchange.coinbase.com'
+    api_url = 'https://api.pro.coinbase.com'
     method = "get"
     end_point = '/products/{}/candles'.format(product_id)
     url = api_url + end_point
-    file_name = f"data_{folder}/{product_id}-test_data.csv"
+    file_name = f"../data_{folder}/{product_id}-test_data.csv"
 
     columns = ["time", "low", "high", "open", "close", "volume"]
     awriter = open(file_name, "w")
@@ -55,9 +54,11 @@ def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
 
         try:
             res = session.request(method, url, params=params, auth=auth, timeout=30)
+            print(res.request.url)
+            print(res.json())
+            break
         except requests.exceptions.ReadTimeout as reRT:
             logging.info(f"exception occurred {reRT.response}")
-            time.sleep(10)
             session = requests.session()
             res = session.request(method, url, params=params, auth=auth, timeout=30)
 
@@ -93,11 +94,10 @@ def coinbase_candles(product_id="BTC-USD", granularity=1, end_time=None):
     session.close()
 
 
-def coinbase_products():
-
+def get_products():
     auth = None
     session = requests.session()
-    api_url = 'https://api.exchange.coinbase.com'
+    api_url = 'https://api.pro.coinbase.com'
     method = 'get'
     endpoint = '/products'
     url = api_url + endpoint
@@ -107,7 +107,5 @@ def coinbase_products():
     return res.json()
 
 
-if __name__ == "__main__":
-    #coinbase_candles(granularity=1)
-    products = coinbase_products()
-    print(products)
+
+
